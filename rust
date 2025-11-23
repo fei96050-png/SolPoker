@@ -1,0 +1,553 @@
+// Cargo.toml dependencies
+[package]
+name = "solpoker"
+version = "0.1.0"
+description = "Texas Hold'em Poker on Solana"
+edition = "2021"
+
+[dependencies]
+solana-program = "1.14.0"
+borsh = "0.10.0"
+borsh-derive = "0.10.0"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+// lib.rs - Main program
+use solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    entrypoint,
+    entrypoint::ProgramResult,
+    msg,
+    program_error::ProgramError,
+    pubkey::Pubkey,
+    system_instruction,
+    sysvar::{rent::Rent, Sysvar},
+};
+use borsh::{BorshDeserialize, BorshSerialize};
+
+// Game state
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+pub enum GamePhase {
+    PreFlop,
+    Flop,
+    Turn,
+    River,
+    Showdown,
+}
+
+// Player state
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+pub struct Player {
+    pub pubkey: Pubkey,
+    pub chips: u64,
+    pub hand: [Card; 2],
+    pub current_bet: u64,
+    pub folded: bool,
+    pub is_active: bool,
+}
+
+// Card representation
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, Copy)]
+pub struct Card {
+    pub rank: u8,  // 2-14 (2-Ace)
+    pub suit: u8,  // 0-3 (Hearts, Diamonds, Clubs, Spades)
+}
+
+// Poker room
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct PokerRoom {
+    pub id: u64,
+    pub creator: Pubkey,
+    pub players: Vec<Player>,
+    pub community_cards: Vec<Card>,
+    pub pot: u64,
+    pub current_bet: u64,
+    pub game_phase: GamePhase,
+    pub dealer_position: u8,
+    pub current_player_index: u8,
+    pub small_blind: u64,
+    pub big_blind: u64,
+    pub is_active: bool,
+    pub created_at: i64,
+}
+
+// Staking pool
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct StakingPool {
+    pub total_staked: u64,
+    pub total_stakers: u64,
+    pub rewards_per_share: u64,
+    pub last_update_time: i64,
+}
+
+// User stake information
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct UserStake {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub reward_debt: u64,
+    pub staked_at: i64,
+}
+
+// Instruction enum
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub enum PokerInstruction {
+    CreateRoom {
+        id: u64,
+        small_blind: u64,
+        big_blind: u64,
+    },
+    JoinRoom {
+        room_id: u64,
+    },
+    LeaveRoom {
+        room_id: u64,
+    },
+    PlayerAction {
+        room_id: u64,
+        action: PlayerAction,
+        amount: u64,
+    },
+    StartGame {
+        room_id: u64,
+    },
+    StakeTokens {
+        amount: u64,
+    },
+    UnstakeTokens {
+        amount: u64,
+    },
+    ClaimRewards,
+}
+
+// Player actions
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub enum PlayerAction {
+    Fold,
+    Check,
+    Call,
+    Bet,
+    Raise,
+}
+
+// Program entry point
+entrypoint!(process_instruction);
+
+pub fn process_instruction(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    instruction_data: &[u8],
+) -> ProgramResult {
+    let instruction = PokerInstruction::try_from_slice(instruction_data)
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+
+    match instruction {
+        PokerInstruction::CreateRoom { id, small_blind, big_blind } => {
+            create_room(program_id, accounts, id, small_blind, big_blind)
+        }
+        PokerInstruction::JoinRoom { room_id } => {
+            join_room(program_id, accounts, room_id)
+        }
+        PokerInstruction::LeaveRoom { room_id } => {
+            leave_room(program_id, accounts, room_id)
+        }
+        PokerInstruction::PlayerAction { room_id, action, amount } => {
+            player_action(program_id, accounts, room_id, action, amount)
+        }
+        PokerInstruction::StartGame { room_id } => {
+            start_game(program_id, accounts, room_id)
+        }
+        PokerInstruction::StakeTokens { amount } => {
+            stake_tokens(program_id, accounts, amount)
+        }
+        PokerInstruction::UnstakeTokens { amount } => {
+            unstake_tokens(program_id, accounts, amount)
+        }
+        PokerInstruction::ClaimRewards => {
+            claim_rewards(program_id, accounts)
+        }
+    }
+}
+
+// Create game room
+fn create_room(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    id: u64,
+    small_blind: u64,
+    big_blind: u64,
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+    let creator = next_account_info(accounts_iter)?;
+    let room_account = next_account_info(accounts_iter)?;
+    let system_program = next_account_info(accounts_iter)?;
+
+    // Verify caller signature
+    if !creator.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    // Initialize room data
+    let room_data = PokerRoom {
+        id,
+        creator: *creator.key,
+        players: Vec::new(),
+        community_cards: Vec::new(),
+        pot: 0,
+        current_bet: 0,
+        game_phase: GamePhase::PreFlop,
+        dealer_position: 0,
+        current_player_index: 0,
+        small_blind,
+        big_blind,
+        is_active: false,
+        created_at: solana_program::clock::Clock::get()?.unix_timestamp,
+    };
+
+    // Serialize and save room data
+    let mut room_data_slice = room_account.try_borrow_mut_data()?;
+    room_data.serialize(&mut *room_data_slice)?;
+
+    msg!("Room created with ID: {}", id);
+    Ok(())
+}
+
+// Join room
+fn join_room(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    room_id: u64,
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+    let player = next_account_info(accounts_iter)?;
+    let room_account = next_account_info(accounts_iter)?;
+
+    // Verify caller signature
+    if !player.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    // Deserialize room data
+    let mut room_data = PokerRoom::try_from_slice(&room_account.data.borrow())?;
+
+    // Check if room is full (assuming max 6 players)
+    if room_data.players.len() >= 6 {
+        return Err(ProgramError::Custom(1)); // Custom error: Room full
+    }
+
+    // Create new player
+    let new_player = Player {
+        pubkey: *player.key,
+        chips: 1000, // Initial chips
+        hand: [Card { rank: 0, suit: 0 }; 2], // Empty initial hand
+        current_bet: 0,
+        folded: false,
+        is_active: true,
+    };
+
+    // Add player to room
+    room_data.players.push(new_player);
+
+    // Save updated room data
+    let mut room_data_slice = room_account.try_borrow_mut_data()?;
+    room_data.serialize(&mut *room_data_slice)?;
+
+    msg!("Player {} joined room {}", player.key, room_id);
+    Ok(())
+}
+
+// Start game
+fn start_game(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    room_id: u64,
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+    let caller = next_account_info(accounts_iter)?;
+    let room_account = next_account_info(accounts_iter)?;
+
+    // Verify caller signature and permissions
+    if !caller.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    // Deserialize room data
+    let mut room_data = PokerRoom::try_from_slice(&room_account.data.borrow())?;
+
+    // Verify caller is room creator
+    if room_data.creator != *caller.key {
+        return Err(ProgramError::Custom(2)); // Custom error: No permission
+    }
+
+    // Check if enough players to start game
+    if room_data.players.len() < 2 {
+        return Err(ProgramError::Custom(3)); // Custom error: Not enough players
+    }
+
+    // Initialize game state
+    room_data.is_active = true;
+    room_data.game_phase = GamePhase::PreFlop;
+    room_data.pot = 0;
+    room_data.current_bet = 0;
+
+    // Deal cards logic (simplified)
+    // In real implementation, use on-chain random number generator
+    for player in &mut room_data.players {
+        // Simulate dealing cards - actual implementation should use secure randomness
+        player.hand = [
+            Card { rank: (solana_program::clock::Clock::get()?.unix_timestamp % 13 + 2) as u8, suit: 0 },
+            Card { rank: (solana_program::clock::Clock::get()?.unix_timestamp % 13 + 2) as u8, suit: 1 },
+        ];
+        player.current_bet = 0;
+        player.folded = false;
+    }
+
+    // Set dealer and blind positions
+    room_data.dealer_position = 0;
+    room_data.current_player_index = (room_data.dealer_position + 3) % room_data.players.len() as u8;
+
+    // Collect blinds
+    let small_blind_pos = (room_data.dealer_position + 1) % room_data.players.len() as u8;
+    let big_blind_pos = (room_data.dealer_position + 2) % room_data.players.len() as u8;
+
+    if let Some(player) = room_data.players.get_mut(small_blind_pos as usize) {
+        player.chips -= room_data.small_blind;
+        player.current_bet = room_data.small_blind;
+        room_data.pot += room_data.small_blind;
+    }
+
+    if let Some(player) = room_data.players.get_mut(big_blind_pos as usize) {
+        player.chips -= room_data.big_blind;
+        player.current_bet = room_data.big_blind;
+        room_data.pot += room_data.big_blind;
+        room_data.current_bet = room_data.big_blind;
+    }
+
+    // Save updated room data
+    let mut room_data_slice = room_account.try_borrow_mut_data()?;
+    room_data.serialize(&mut *room_data_slice)?;
+
+    msg!("Game started in room {}", room_id);
+    Ok(())
+}
+
+// Player action
+fn player_action(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    room_id: u64,
+    action: PlayerAction,
+    amount: u64,
+) -> ProgramResult {
+    let accounts_iter = &mut accounts.iter();
+    let player = next_account_info(accounts_iter)?;
+    let room_account = next_account_info(accounts_iter)?;
+
+    // Verify caller signature
+    if !player.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    // Deserialize room data
+    let mut room_data = PokerRoom::try_from_slice(&room_account.data.borrow())?;
+
+    // Check if game is active
+    if !room_data.is_active {
+        return Err(ProgramError::Custom(4)); // Custom error: Game not started
+    }
+
+    // Find player
+    let player_index = room_data.players.iter().position(|p| p.pubkey == *player.key);
+    if player_index.is_none() {
+        return Err(ProgramError::Custom(5)); // Custom error: Player not in room
+    }
+
+    let player_index = player_index.unwrap();
+
+    // Check if it's current player's turn
+    if room_data.current_player_index as usize != player_index {
+        return Err(ProgramError::Custom(6)); // Custom error: Not your turn
+    }
+
+    // Process player action
+    match action {
+        PlayerAction::Fold => {
+            if let Some(player) = room_data.players.get_mut(player_index) {
+                player.folded = true;
+            }
+        }
+        PlayerAction::Check => {
+            // Check if can check
+            if let Some(player) = room_data.players.get_mut(player_index) {
+                if player.current_bet < room_data.current_bet {
+                    return Err(ProgramError::Custom(7)); // Custom error: Cannot check
+                }
+            }
+        }
+        PlayerAction::Call => {
+            if let Some(player) = room_data.players.get_mut(player_index) {
+                let call_amount = room_data.current_bet - player.current_bet;
+                if call_amount > player.chips {
+                    return Err(ProgramError::Custom(8)); // Custom error: Insufficient chips
+                }
+                player.chips -= call_amount;
+                player.current_bet = room_data.current_bet;
+                room_data.pot += call_amount;
+            }
+        }
+        PlayerAction::Bet | PlayerAction::Raise => {
+            if let Some(player) = room_data.players.get_mut(player_index) {
+                if amount < room_data.current_bet * 2 {
+                    return Err(ProgramError::Custom(9)); // Custom error: Raise amount too small
+                }
+                if amount > player.chips + player.current_bet {
+                    return Err(ProgramError::Custom(8)); // Custom error: Insufficient chips
+                }
+                let bet_amount = amount - player.current_bet;
+                player.chips -= bet_amount;
+                player.current_bet = amount;
+                room_data.current_bet = amount;
+                room_data.pot += bet_amount;
+            }
+        }
+    }
+
+    // Move to next player
+    room_data.current_player_index = (room_data.current_player_index + 1) % room_data.players.len() as u8;
+
+    // Check if round is over
+    if is_round_over(&room_data) {
+        advance_game_phase(&mut room_data);
+    }
+
+    // Save updated room data
+    let mut room_data_slice = room_account.try_borrow_mut_data()?;
+    room_data.serialize(&mut *room_data_slice)?;
+
+    msg!("Player action processed in room {}", room_id);
+    Ok(())
+}
+
+// Check if round is over
+fn is_round_over(room_data: &PokerRoom) -> bool {
+    let active_players = room_data.players.iter().filter(|p| !p.folded).count();
+    
+    if active_players <= 1 {
+        return true;
+    }
+
+    let all_bets_equal = room_data.players.iter()
+        .filter(|p| !p.folded)
+        .all(|p| p.current_bet == room_data.current_bet);
+
+    all_bets_equal
+}
+
+// Advance game phase
+fn advance_game_phase(room_data: &mut PokerRoom) {
+    match room_data.game_phase {
+        GamePhase::PreFlop => {
+            room_data.game_phase = GamePhase::Flop;
+            // Deal flop (3 community cards)
+            // Actual implementation should use secure random number generator
+        }
+        GamePhase::Flop => {
+            room_data.game_phase = GamePhase::Turn;
+            // Deal turn (1 community card)
+        }
+        GamePhase::Turn => {
+            room_data.game_phase = GamePhase::River;
+            // Deal river (1 community card)
+        }
+        GamePhase::River => {
+            room_data.game_phase = GamePhase::Showdown;
+            // Showdown and determine winner
+            determine_winner(room_data);
+        }
+        GamePhase::Showdown => {
+            // Game ended, reset room
+            reset_room(room_data);
+        }
+    }
+
+    // Reset current bets
+    for player in &mut room_data.players {
+        player.current_bet = 0;
+    }
+    room_data.current_bet = 0;
+
+    // Set next player to act
+    room_data.current_player_index = (room_data.dealer_position + 1) % room_data.players.len() as u8;
+}
+
+// Determine winner (simplified)
+fn determine_winner(room_data: &mut PokerRoom) {
+    // In actual implementation, compare all players' hands
+    // Simplified: randomly select an active player as winner
+    let active_players: Vec<usize> = room_data.players.iter()
+        .enumerate()
+        .filter(|(_, p)| !p.folded)
+        .map(|(i, _)| i)
+        .collect();
+
+    if active_players.is_empty() {
+        return;
+    }
+
+    // Use clock as simple random source (production should use secure randomness)
+    let winner_index = active_players[(solana_program::clock::Clock::get().unwrap().unix_timestamp as usize) % active_players.len()];
+    
+    if let Some(winner) = room_data.players.get_mut(winner_index) {
+        winner.chips += room_data.pot;
+    }
+
+    room_data.pot = 0;
+}
+
+// Reset room
+fn reset_room(room_data: &mut PokerRoom) {
+    room_data.is_active = false;
+    room_data.pot = 0;
+    room_data.current_bet = 0;
+    room_data.community_cards.clear();
+    room_data.game_phase = GamePhase::PreFlop;
+    
+    for player in &mut room_data.players {
+        player.folded = false;
+        player.current_bet = 0;
+        // Hands will be redealt when next game starts
+    }
+}
+
+// Stake tokens
+fn stake_tokens(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    amount: u64,
+) -> ProgramResult {
+    // Implement staking logic
+    msg!("Staking {} tokens", amount);
+    Ok(())
+}
+
+// Unstake tokens
+fn unstake_tokens(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    amount: u64,
+) -> ProgramResult {
+    // Implement unstaking logic
+    msg!("Unstaking {} tokens", amount);
+    Ok(())
+}
+
+// Claim rewards
+fn claim_rewards(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    // Implement reward claiming logic
+    msg!("Claiming rewards");
+    Ok(())
+}
