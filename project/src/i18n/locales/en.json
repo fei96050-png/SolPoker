@@ -1,0 +1,148 @@
+{
+  "app": {
+    "title": "BSC Poker",
+    "subtitle": "Blockchain Texas Hold'em"
+  },
+  "nav": {
+    "lobby": "Lobby",
+    "myGames": "My Games",
+    "leaderboard": "Leaderboard",
+    "profile": "Profile"
+  },
+  "wallet": {
+    "connect": "Connect Wallet",
+    "disconnect": "Disconnect",
+    "connected": "Connected",
+    "connectToPlay": "Connect your wallet to play",
+    "wrongNetwork": "Wrong Network",
+    "switchToBSC": "Switch to BSC",
+    "balance": "Balance",
+    "address": "Address"
+  },
+  "lobby": {
+    "title": "Game Lobby",
+    "createRoom": "Create Room",
+    "joinRoom": "Join Room",
+    "activeRooms": "Active Rooms",
+    "noRooms": "No active rooms. Create one to start playing!",
+    "players": "Players",
+    "buyIn": "Buy-in",
+    "status": "Status",
+    "waiting": "Waiting",
+    "playing": "Playing",
+    "finished": "Finished"
+  },
+  "room": {
+    "create": {
+      "title": "Create New Room",
+      "roomName": "Room Name",
+      "buyInAmount": "Buy-in Amount (BNB)",
+      "create": "Create Room",
+      "cancel": "Cancel",
+      "placeholder": "Enter room name",
+      "minAmount": "Minimum 0.01 BNB"
+    },
+    "info": {
+      "room": "Room",
+      "pot": "Pot",
+      "players": "Players",
+      "creator": "Creator",
+      "dealer": "Dealer"
+    }
+  },
+  "game": {
+    "actions": {
+      "fold": "Fold",
+      "check": "Check",
+      "call": "Call",
+      "raise": "Raise",
+      "allIn": "All In",
+      "bet": "Bet"
+    },
+    "status": {
+      "yourTurn": "Your Turn",
+      "waiting": "Waiting for players...",
+      "gameStarting": "Game starting...",
+      "roundOver": "Round Over",
+      "handWinner": "Hand Winner",
+      "gameOver": "Game Over"
+    },
+    "rounds": {
+      "preFlop": "Pre-Flop",
+      "flop": "Flop",
+      "turn": "Turn",
+      "river": "River",
+      "showdown": "Showdown"
+    },
+    "hands": {
+      "highCard": "High Card",
+      "pair": "Pair",
+      "twoPair": "Two Pair",
+      "threeOfKind": "Three of a Kind",
+      "straight": "Straight",
+      "flush": "Flush",
+      "fullHouse": "Full House",
+      "fourOfKind": "Four of a Kind",
+      "straightFlush": "Straight Flush",
+      "royalFlush": "Royal Flush"
+    },
+    "timer": "Time left",
+    "betAmount": "Bet Amount",
+    "chipCount": "Chips"
+  },
+  "profile": {
+    "title": "Player Profile",
+    "username": "Username",
+    "totalGames": "Total Games",
+    "totalWins": "Wins",
+    "winRate": "Win Rate",
+    "totalEarnings": "Total Earnings",
+    "biggestPot": "Biggest Pot",
+    "edit": "Edit Profile",
+    "save": "Save",
+    "statistics": "Statistics"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "rank": "Rank",
+    "player": "Player",
+    "wins": "Wins",
+    "games": "Games",
+    "earnings": "Earnings",
+    "winRate": "Win Rate"
+  },
+  "transaction": {
+    "pending": "Transaction pending...",
+    "confirmed": "Transaction confirmed!",
+    "failed": "Transaction failed",
+    "approving": "Approving...",
+    "approved": "Approved!"
+  },
+  "errors": {
+    "walletNotConnected": "Please connect your wallet",
+    "insufficientBalance": "Insufficient balance",
+    "roomFull": "Room is full",
+    "alreadyInRoom": "Already in this room",
+    "notInRoom": "Not in this room",
+    "invalidAmount": "Invalid amount",
+    "transactionFailed": "Transaction failed",
+    "networkError": "Network error"
+  },
+  "common": {
+    "loading": "Loading...",
+    "close": "Close",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "back": "Back",
+    "next": "Next",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK"
+  },
+  "footer": {
+    "followUs": "Follow us on",
+    "platform": "Platform Fee: 0.5%",
+    "smartContract": "Smart Contract",
+    "verify": "Verify on BSCScan"
+  }
+}

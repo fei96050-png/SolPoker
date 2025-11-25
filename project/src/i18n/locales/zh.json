@@ -1,0 +1,148 @@
+{
+  "app": {
+    "title": "BSC扑克",
+    "subtitle": "区块链德州扑克"
+  },
+  "nav": {
+    "lobby": "大厅",
+    "myGames": "我的游戏",
+    "leaderboard": "排行榜",
+    "profile": "个人资料"
+  },
+  "wallet": {
+    "connect": "连接钱包",
+    "disconnect": "断开连接",
+    "connected": "已连接",
+    "connectToPlay": "连接钱包开始游戏",
+    "wrongNetwork": "网络错误",
+    "switchToBSC": "切换到BSC",
+    "balance": "余额",
+    "address": "地址"
+  },
+  "lobby": {
+    "title": "游戏大厅",
+    "createRoom": "创建房间",
+    "joinRoom": "加入房间",
+    "activeRooms": "活跃房间",
+    "noRooms": "没有活跃房间。创建一个开始游戏！",
+    "players": "玩家",
+    "buyIn": "买入",
+    "status": "状态",
+    "waiting": "等待中",
+    "playing": "游戏中",
+    "finished": "已结束"
+  },
+  "room": {
+    "create": {
+      "title": "创建新房间",
+      "roomName": "房间名称",
+      "buyInAmount": "买入金额 (BNB)",
+      "create": "创建房间",
+      "cancel": "取消",
+      "placeholder": "输入房间名称",
+      "minAmount": "最少 0.01 BNB"
+    },
+    "info": {
+      "room": "房间",
+      "pot": "底池",
+      "players": "玩家",
+      "creator": "创建者",
+      "dealer": "庄家"
+    }
+  },
+  "game": {
+    "actions": {
+      "fold": "弃牌",
+      "check": "过牌",
+      "call": "跟注",
+      "raise": "加注",
+      "allIn": "全下",
+      "bet": "下注"
+    },
+    "status": {
+      "yourTurn": "轮到你了",
+      "waiting": "等待玩家...",
+      "gameStarting": "游戏开始...",
+      "roundOver": "回合结束",
+      "handWinner": "本局赢家",
+      "gameOver": "游戏结束"
+    },
+    "rounds": {
+      "preFlop": "翻牌前",
+      "flop": "翻牌",
+      "turn": "转牌",
+      "river": "河牌",
+      "showdown": "摊牌"
+    },
+    "hands": {
+      "highCard": "高牌",
+      "pair": "一对",
+      "twoPair": "两对",
+      "threeOfKind": "三条",
+      "straight": "顺子",
+      "flush": "同花",
+      "fullHouse": "葫芦",
+      "fourOfKind": "四条",
+      "straightFlush": "同花顺",
+      "royalFlush": "皇家同花顺"
+    },
+    "timer": "剩余时间",
+    "betAmount": "下注金额",
+    "chipCount": "筹码"
+  },
+  "profile": {
+    "title": "玩家资料",
+    "username": "用户名",
+    "totalGames": "总局数",
+    "totalWins": "胜场",
+    "winRate": "胜率",
+    "totalEarnings": "总收益",
+    "biggestPot": "最大底池",
+    "edit": "编辑资料",
+    "save": "保存",
+    "statistics": "统计"
+  },
+  "leaderboard": {
+    "title": "排行榜",
+    "rank": "排名",
+    "player": "玩家",
+    "wins": "胜场",
+    "games": "局数",
+    "earnings": "收益",
+    "winRate": "胜率"
+  },
+  "transaction": {
+    "pending": "交易进行中...",
+    "confirmed": "交易已确认！",
+    "failed": "交易失败",
+    "approving": "授权中...",
+    "approved": "已授权！"
+  },
+  "errors": {
+    "walletNotConnected": "请连接钱包",
+    "insufficientBalance": "余额不足",
+    "roomFull": "房间已满",
+    "alreadyInRoom": "已在此房间",
+    "notInRoom": "不在此房间",
+    "invalidAmount": "无效金额",
+    "transactionFailed": "交易失败",
+    "networkError": "网络错误"
+  },
+  "common": {
+    "loading": "加载中...",
+    "close": "关闭",
+    "confirm": "确认",
+    "cancel": "取消",
+    "back": "返回",
+    "next": "下一步",
+    "yes": "是",
+    "no": "否",
+    "ok": "确定"
+  },
+  "footer": {
+    "followUs": "关注我们",
+    "platform": "平台费用: 0.5%",
+    "smartContract": "智能合约",
+    "verify": "在BSCScan上验证"
+  }
+}
